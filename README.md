@@ -1,44 +1,31 @@
-# C02 Industrial IoT Refactor
+# C02 IoT 反编译代码整理项目
 
-本仓库包含两部分内容：
+该仓库原始内容是一个超大体量的单文件反编译结果（`iot_run.c`），可读性较差，无法直接按普通 C/C++ 项目方式构建。
 
-1. `iot_run.c`：原始反编译文本（保留用于追溯）；
-2. `src/` + `include/`：按工业项目结构重建的可编译 IoT 应用。
+本次整理目标：
 
-## 目标
+- 保留原始反编译文本，避免破坏证据链与可追溯性；
+- 提供“入口 -> 模块 -> 关键行为”的阅读路径；
+- 提供可重复执行的脚本，自动从 `iot_run.c` 提取模块线索和函数统计；
+- 将分析结果沉淀在 `docs/`，便于二次逆向。
 
-- 忠于 `iot_run.c`，优先复刻关键启动行为；
-- 在可复刻基础上完成工程化（模块、配置、日志、构建系统）；
-- 支持后续逐步替换为真实串口/MQTT/Modbus/Web 硬件协议实现。
+## 仓库结构
 
-## 目前已完成的 1:1 启动行为复刻（核心路径）
+- `iot_run.c`：原始反编译代码。
+- `scripts/extract_iot_map.py`：自动提取模块、入口函数、源码路径线索、`FUN_xxx` 函数统计。
+- `docs/architecture.md`：人工整理的架构解读与阅读顺序。
+- `docs/iot_map.md`：由脚本生成的索引文档（可重复生成）。
 
-已在 `LegacyBootstrap` 中对 `FUN_004881dc` 的关键分支进行可维护实现：
-
-- `/tmp/.system.ini` 缺失时创建，并输出 `SYSTEM   START`；
-- 固定输出 `start iot` 启动标志；
-- 复刻 `hisTech.ini` 与 `/tmp/hisTech.ini` 的分支逻辑：
-  - 缺失两者 -> `iot init v1 START`；
-  - 本地存在且 `tech_mode=1` -> 复制到 `/tmp`，`iot init v2 START`；
-  - 本地存在且 `tech_mode=0` -> 移动到 `/tmp`，`iot init v1 manual START`；
-  - `/tmp/hisTech.ini` 已存在 -> `iot   UPDATE ...`，且 `tech_mode=1` 时回拷本地文件。
-
-- 增强配置读取：支持空白裁剪、布尔/整数默认值读取；
-- 新增参数采集：启动时采集 machine/kernel/hostname/uptime/meminfo 并写回 `runtime.*` 配置键。
-
-## 项目结构
-
-- `include/iot/`：公共接口（应用、日志、配置、模块抽象、启动兼容层）；
-- `include/iot/modules/`：业务模块接口声明；
-- `src/`：核心实现；
-- `src/modules/`：模块实现；
-- `config/system.ini`：运行配置示例；
-- `iot_run.c`：原始反编译代码归档。
-
-## 构建与运行
+## 快速开始
 
 ```bash
-cmake -S . -B build
-cmake --build build
-./build/iot_app
+python3 scripts/extract_iot_map.py
 ```
+
+执行后会刷新 `docs/iot_map.md`。
+
+## 建议阅读顺序
+
+1. 先看 `docs/architecture.md` 了解主干逻辑和模块划分；
+2. 再看 `docs/iot_map.md` 通过行号跳回 `iot_run.c` 做深入分析；
+3. 最后在 `iot_run.c` 里对具体 `FUN_` 函数重命名并提取子模块（建议后续阶段进行）。
